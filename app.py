@@ -1,6 +1,6 @@
 import cv2
 import os
-from flask import Flask,request,render_template
+from flask import Flask,request,render_template,jsonify
 from datetime import date
 from datetime import datetime
 import numpy as np
@@ -8,6 +8,9 @@ from sklearn.neighbors import KNeighborsClassifier
 import pandas as pd
 import joblib
 import shutil
+import smtplib
+from email.mime.text import MIMEText
+from email.mime.multipart import MIMEMultipart
 
 #### Defining Flask App
 app = Flask(__name__)
@@ -48,17 +51,23 @@ def totalreg():
 def getusers():
     nameUsers = []
     idUsers = []
+    emailUsers = [] 
     l = len(os.listdir('static/faces'))
+    print(os.listdir('static/faces'))
+    if l == 0: 
+        print('No user')
     for user in os.listdir('static/faces'):
+        print(user)
         nameUsers.append(user.split('_')[0])
         idUsers.append(user.split('_')[1])
-    return nameUsers, idUsers, l
+        emailUsers.append(user.split('_')[2])
+    return nameUsers, idUsers, l, emailUsers
 
 #### delete user
-def delUser(userid, username):
+def delUser(userid, username, email):
     for user in os.listdir('static/faces'):
         if user.split('_')[1] == userid:
-            shutil.rmtree(f'static/faces/{username}_{userid}', ignore_errors=True)
+            shutil.rmtree(f'static/faces/{username}_{userid}_{email}', ignore_errors=True)
 
 #### extract the face from an image
 def extract_faces(img):
@@ -80,12 +89,16 @@ def train_model():
     faces = []
     labels = []
     userlist = os.listdir('static/faces')
+    print(userlist)
     for user in userlist:
         for imgname in os.listdir(f'static/faces/{user}'):
             img = cv2.imread(f'static/faces/{user}/{imgname}')
             resized_face = cv2.resize(img, (50, 50))
             faces.append(resized_face.ravel())
             labels.append(user)
+            
+    if len(faces) == 0:
+        return
     faces = np.array(faces)
     knn = KNeighborsClassifier(n_neighbors=5)
     knn.fit(faces,labels)
@@ -134,7 +147,7 @@ def add_attendance(name):
 
             df.to_csv(f'Attendance/Attendance-{datetoday}.csv', index=False)
 
-#Get check in and out time of user    
+#Get check in and out time of user
 def getUserTime(userid):
     df = pd.read_csv(f'Attendance/Attendance-{datetoday}.csv')
     row_index = 0
@@ -164,17 +177,18 @@ def home():
 
 @app.route('/listUsers')
 def users():
-    names, rolls, l = getusers()
-    return render_template('ListUser.html', names= names, rolls=rolls, l=l)
+    names, rolls, l, emails = getusers()
+    return render_template('ListUser.html', names= names, rolls=rolls, l=l, emails=emails)
 
 @app.route('/deletetUser', methods=['POST'])
 def deleteUser():
     userid = request.form['userid']
     username = request.form['username']
-    delUser(userid, username)
+    useremail = request.form['useremail']
+    delUser(userid, username, useremail)
     train_model()
-    names, rolls, l = getusers()
-    return render_template('ListUser.html', names= names, rolls=rolls, l=l)
+    names, rolls, l, emails = getusers()
+    return render_template('ListUser.html', names= names, rolls=rolls, l=l, emails=emails)
 
 #### This function will run when we click on Check in / Check out Button
 @app.route('/start',methods=['GET'])
@@ -199,7 +213,7 @@ def start():
             cv2.putText(frame, f'{identified_person}', (30, 30), cv2.FONT_HERSHEY_SIMPLEX, 1, (255, 0, 20), 2)
 
         cv2.imshow('Attendance', frame)
-        if cv2.waitKey(1) == 27: # phim q break chuogn trinh
+        if cv2.waitKey(1) == 27: # phim esc break chuong trinh
             break
 
     cap.release()
@@ -228,6 +242,38 @@ def start():
         if name not in os.listdir(userimagefolder):
             cv2.imwrite(userimagefolder+'/'+name,frame[y:y+h,x:x+w])
 
+
+    # data = request.json
+    # user_email = data.get('email')
+    # user_name = data.get('name')
+    # check_in_time = data.get('check_in_time')
+
+    # if not (user_email and user_name and check_in_time):
+    #     return jsonify({'error': 'Missing data'}), 400
+
+ 
+    # # Tạo email
+    # subject = "Attendance Check-In Confirmation"
+    # body = f"""
+    # Dear {user_name},
+
+    # You have successfully checked in at {check_in_time}.
+    
+    # Thank you!
+    # """
+
+    # msg = MIMEMultipart()
+    # msg['From'] = EMAIL_ADDRESS
+    # msg['To'] = user_email
+    # msg['Subject'] = subject
+    # msg.attach(MIMEText(body, 'plain'))
+
+    # # Kết nối SMTP và gửi email
+    # with smtplib.SMTP(SMTP_SERVER, SMTP_PORT) as server:
+    #     server.starttls()
+    #     server.login(EMAIL_ADDRESS, EMAIL_PASSWORD)
+    #     server.send_message(msg)
+
     return render_template('home.html',names=names,rolls=rolls,inTimes=inTimes,outTimes=outTimes,totalTimes=totalTimes,l=l,totalreg=totalreg(),datetoday2=datetoday2) 
 
 
@@ -236,8 +282,9 @@ def start():
 def add():
     newusername = request.form['newusername']
     newuserid = request.form['newuserid']
+    newuseremail = request.form['newuseremail']
     if checkUserID(newuserid) == False:
-        userimagefolder = 'static/faces/'+newusername+'_'+str(newuserid)
+        userimagefolder = 'static/faces/'+newusername+'_'+str(newuserid)+'_'+newuseremail
         if not os.path.isdir(userimagefolder):
             os.makedirs(userimagefolder)
         cap = cv2.VideoCapture(0)
@@ -270,8 +317,88 @@ def add():
         return render_template('home.html',names=names,rolls=rolls,inTimes=inTimes,outTimes=outTimes,totalTimes=totalTimes,l=l,totalreg=totalreg(),datetoday2=datetoday2,mess='User ID has existed. Please type other ID.') 
 
 
+    data = request.json
+    user_email = data.get('email')
+    user_name = data.get('name')
+    check_in_time = data.get('check_in_time')
+
+    if not (user_email and user_name and check_in_time):
+        return jsonify({'error': 'Missing data'}), 400
+
+    try:
+        # Tạo email
+        subject = "Attendance Check-In Confirmation"
+        body = f"""
+        Dear {user_name},
+
+        You have successfully checked in at {check_in_time}.
+        
+        Thank you!
+        """
+
+        msg = MIMEMultipart()
+        msg['From'] = EMAIL_ADDRESS
+        msg['To'] = user_email
+        msg['Subject'] = subject
+        msg.attach(MIMEText(body, 'plain'))
+
+        # Kết nối SMTP và gửi email
+        with smtplib.SMTP(SMTP_SERVER, SMTP_PORT) as server:
+            server.starttls()
+            server.login(EMAIL_ADDRESS, EMAIL_PASSWORD)
+            server.send_message(msg)
+
+        return jsonify({'message': 'Attendance email sent successfully!'})
+
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
 
 #### Our main function which runs the Flask App
 if __name__ == '__main__':
     # app.run(debug=True)
     app.run(host='0.0.0.0', port='6969')
+
+
+# Cấu hình email server
+SMTP_SERVER = 'smtp.gmail.com'
+SMTP_PORT = 587
+EMAIL_ADDRESS = 'duytrung.ng1@gmail.com' 
+EMAIL_PASSWORD = '0942556135'  
+# API gửi email khi chấm công
+# @app.route('/attendance', methods=['POST'])
+# def attendance():
+#     data = request.json
+#     user_email = data.get('email')
+#     user_name = data.get('name')
+#     check_in_time = data.get('check_in_time')
+
+#     if not (user_email and user_name and check_in_time):
+#         return jsonify({'error': 'Missing data'}), 400
+
+#     try:
+#         # Tạo email
+#         subject = "Attendance Check-In Confirmation"
+#         body = f"""
+#         Dear {user_name},
+
+#         You have successfully checked in at {check_in_time}.
+        
+#         Thank you!
+#         """
+
+#         msg = MIMEMultipart()
+#         msg['From'] = EMAIL_ADDRESS
+#         msg['To'] = user_email
+#         msg['Subject'] = subject
+#         msg.attach(MIMEText(body, 'plain'))
+
+#         # Kết nối SMTP và gửi email
+#         with smtplib.SMTP(SMTP_SERVER, SMTP_PORT) as server:
+#             server.starttls()
+#             server.login(EMAIL_ADDRESS, EMAIL_PASSWORD)
+#             server.send_message(msg)
+
+#         return jsonify({'message': 'Attendance email sent successfully!'})
+
+#     except Exception as e:
+#         return jsonify({'error': str(e)}), 500
