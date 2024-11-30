@@ -198,6 +198,8 @@ def start():
 
     cap = cv2.VideoCapture(0)
     ret = True
+    identified_person = None
+
     while ret:
         ret, frame = cap.read()
         if not ret or frame is None:
@@ -218,9 +220,50 @@ def start():
 
     cap.release()
     cv2.destroyAllWindows()
-    add_attendance(identified_person)
 
-    print(identified_person)
+    if identified_person:
+        add_attendance(identified_person)
+        username = identified_person.split('_')[0]
+        userid = identified_person.split('_')[1]
+        useremail = identified_person.split('_')[2]
+
+        # Gửi email xác nhận check-in
+        try:
+            # Email settings
+            SMTP_SERVER = 'smtp.gmail.com'
+            SMTP_PORT = 587
+            EMAIL_ADDRESS = os.environ.get('EMAIL_USER')
+            EMAIL_PASSWORD = os.environ.get('EMAIL_PASS')
+
+            # Tạo nội dung email
+            subject = "Attendance Check-In Confirmation"
+            current_time = datetime.now().strftime("%H:%M:%S")
+            body = f"""
+            Dear {username},
+
+            You have successfully checked in at {current_time}.
+
+            Thank you!
+            """
+
+            # Tạo đối tượng email
+            msg = MIMEMultipart()
+            msg['From'] = EMAIL_ADDRESS
+            msg['To'] = useremail
+            msg['Subject'] = subject
+            msg.attach(MIMEText(body, 'plain'))
+
+            # Gửi email qua SMTP
+            with smtplib.SMTP(SMTP_SERVER, SMTP_PORT) as server:
+                server.starttls()  # Bảo mật kết nối
+                server.login(EMAIL_ADDRESS, EMAIL_PASSWORD)
+                server.send_message(msg)
+
+            print(f"Email sent to {useremail}")
+
+        except Exception as e:
+            print(f"Failed to send email: {e}")
+
     
     names,rolls,inTimes,outTimes,totalTimes,l = extract_attendance()    
 
@@ -241,38 +284,6 @@ def start():
         name = username+'_'+userid+'_'+'checkout'+'.jpg'
         if name not in os.listdir(userimagefolder):
             cv2.imwrite(userimagefolder+'/'+name,frame[y:y+h,x:x+w])
-
-
-    # data = request.json
-    # user_email = data.get('email')
-    # user_name = data.get('name')
-    # check_in_time = data.get('check_in_time')
-
-    # if not (user_email and user_name and check_in_time):
-    #     return jsonify({'error': 'Missing data'}), 400
-
- 
-    # # Tạo email
-    # subject = "Attendance Check-In Confirmation"
-    # body = f"""
-    # Dear {user_name},
-
-    # You have successfully checked in at {check_in_time}.
-    
-    # Thank you!
-    # """
-
-    # msg = MIMEMultipart()
-    # msg['From'] = EMAIL_ADDRESS
-    # msg['To'] = user_email
-    # msg['Subject'] = subject
-    # msg.attach(MIMEText(body, 'plain'))
-
-    # # Kết nối SMTP và gửi email
-    # with smtplib.SMTP(SMTP_SERVER, SMTP_PORT) as server:
-    #     server.starttls()
-    #     server.login(EMAIL_ADDRESS, EMAIL_PASSWORD)
-    #     server.send_message(msg)
 
     return render_template('home.html',names=names,rolls=rolls,inTimes=inTimes,outTimes=outTimes,totalTimes=totalTimes,l=l,totalreg=totalreg(),datetoday2=datetoday2) 
 
@@ -359,46 +370,4 @@ if __name__ == '__main__':
     app.run(host='0.0.0.0', port='6969')
 
 
-# Cấu hình email server
-SMTP_SERVER = 'smtp.gmail.com'
-SMTP_PORT = 587
-EMAIL_ADDRESS = 'duytrung.ng1@gmail.com' 
-EMAIL_PASSWORD = '0942556135'  
-# API gửi email khi chấm công
-# @app.route('/attendance', methods=['POST'])
-# def attendance():
-#     data = request.json
-#     user_email = data.get('email')
-#     user_name = data.get('name')
-#     check_in_time = data.get('check_in_time')
 
-#     if not (user_email and user_name and check_in_time):
-#         return jsonify({'error': 'Missing data'}), 400
-
-#     try:
-#         # Tạo email
-#         subject = "Attendance Check-In Confirmation"
-#         body = f"""
-#         Dear {user_name},
-
-#         You have successfully checked in at {check_in_time}.
-        
-#         Thank you!
-#         """
-
-#         msg = MIMEMultipart()
-#         msg['From'] = EMAIL_ADDRESS
-#         msg['To'] = user_email
-#         msg['Subject'] = subject
-#         msg.attach(MIMEText(body, 'plain'))
-
-#         # Kết nối SMTP và gửi email
-#         with smtplib.SMTP(SMTP_SERVER, SMTP_PORT) as server:
-#             server.starttls()
-#             server.login(EMAIL_ADDRESS, EMAIL_PASSWORD)
-#             server.send_message(msg)
-
-#         return jsonify({'message': 'Attendance email sent successfully!'})
-
-#     except Exception as e:
-#         return jsonify({'error': str(e)}), 500
