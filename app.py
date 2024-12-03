@@ -8,18 +8,25 @@ from sklearn.neighbors import KNeighborsClassifier
 import pandas as pd
 import joblib
 import shutil
-import smtplib
-from email.mime.text import MIMEText
-from email.mime.multipart import MIMEMultipart
+from flask_mail import Mail, Message
 
 #### Defining Flask App
 app = Flask(__name__)
 
+# Cấu hình mail server
+app.config['MAIL_SERVER'] = 'smtp.gmail.com'
+app.config['MAIL_PORT'] = 587
+app.config['MAIL_USE_TLS'] = True
+app.config['MAIL_USE_SSL'] = False
+app.config['MAIL_USERNAME'] = 'duytrung.ng1@gmail.com'  # Email của bạn
+app.config['MAIL_PASSWORD'] = 'nics wtpn qhcq dvbo'  # Mật khẩu ứng dụng
+app.config['MAIL_DEFAULT_SENDER'] = 'duytrung.ng1@gmail.com'
+
+mail = Mail(app)
 
 #### Saving Date today in 2 different formats
 datetoday = date.today().strftime("%m_%d_%y")
 datetoday2 = date.today().strftime("%d-%B-%Y")
-
 
 #### Initializing VideoCapture object to access WebCam
 face_detector = cv2.CascadeClassifier('haarcascade_frontalface_default.xml')
@@ -27,7 +34,6 @@ try:
     cap = cv2.VideoCapture(1)
 except:
     cap = cv2.VideoCapture(0)
-
 
 #### If these directories don't exist, create them
 if not os.path.isdir('Attendance'):
@@ -167,6 +173,28 @@ def checkUserID(newuserid):
             return True
     return False
 
+def send_email(to_email, username):
+    """
+    Gửi email thông báo cho nhân viên sau khi thêm user thành công.
+    """
+    subject = "Thông Báo: Đăng Ký Thành Công"
+    body = f"""
+    Xin chào {username},
+
+    Bạn đã được thêm thành công vào hệ thống chấm công.
+
+    Trân trọng,
+    Đội ngũ quản lý.
+    """
+
+    try:
+        msg = Message(subject, recipients=[to_email], body=body)
+        mail.send(msg)
+        print(f"Email sent to {to_email}")
+    except Exception as e:
+        print(f"Failed to send email: {e}")
+
+
 ################## ROUTING FUNCTIONS #########################
 
 #### Our main page
@@ -227,42 +255,6 @@ def start():
         userid = identified_person.split('_')[1]
         useremail = identified_person.split('_')[2]
 
-        # Gửi email xác nhận check-in
-        try:
-            # Email settings
-            SMTP_SERVER = 'smtp.gmail.com'
-            SMTP_PORT = 587
-            EMAIL_ADDRESS = os.environ.get('EMAIL_USER')
-            EMAIL_PASSWORD = os.environ.get('EMAIL_PASS')
-
-            # Tạo nội dung email
-            subject = "Attendance Check-In Confirmation"
-            current_time = datetime.now().strftime("%H:%M:%S")
-            body = f"""
-            Dear {username},
-
-            You have successfully checked in at {current_time}.
-
-            Thank you!
-            """
-
-            # Tạo đối tượng email
-            msg = MIMEMultipart()
-            msg['From'] = EMAIL_ADDRESS
-            msg['To'] = useremail
-            msg['Subject'] = subject
-            msg.attach(MIMEText(body, 'plain'))
-
-            # Gửi email qua SMTP
-            with smtplib.SMTP(SMTP_SERVER, SMTP_PORT) as server:
-                server.starttls()  # Bảo mật kết nối
-                server.login(EMAIL_ADDRESS, EMAIL_PASSWORD)
-                server.send_message(msg)
-
-            print(f"Email sent to {useremail}")
-
-        except Exception as e:
-            print(f"Failed to send email: {e}")
 
     
     names,rolls,inTimes,outTimes,totalTimes,l = extract_attendance()    
@@ -289,80 +281,48 @@ def start():
 
 
 #### This function will run when we add a new user
-@app.route('/add',methods=['GET','POST'])
+@app.route('/add', methods=['GET', 'POST'])
 def add():
     newusername = request.form['newusername']
     newuserid = request.form['newuserid']
     newuseremail = request.form['newuseremail']
+
     if checkUserID(newuserid) == False:
-        userimagefolder = 'static/faces/'+newusername+'_'+str(newuserid)+'_'+newuseremail
+        userimagefolder = 'static/faces/' + newusername + '_' + str(newuserid) + '_' + newuseremail
         if not os.path.isdir(userimagefolder):
             os.makedirs(userimagefolder)
         cap = cv2.VideoCapture(0)
-        i,j = 0,0
+        i, j = 0, 0
         while 1:
             _, frame = cap.read()
             faces = extract_faces(frame)
             if faces is not None:
                 for (x, y, w, h) in faces:
-                    cv2.rectangle(frame,(x, y), (x+w, y+h), (255, 0, 20), 2)
-                    cv2.putText(frame,f'Images Captured: {i}/100',(30,30),cv2.FONT_HERSHEY_SIMPLEX,1,(255, 0, 20),2,cv2.LINE_AA)
-                    if j%10==0:
-                        name = newusername+'_'+str(i)+'.jpg'
-                        cv2.imwrite(userimagefolder+'/'+name,frame[y:y+h,x:x+w])
-                        i+=1
-                    j+=1
-                if j==1000:
+                    cv2.rectangle(frame, (x, y), (x + w, y + h), (255, 0, 20), 2)
+                    cv2.putText(frame, f'Images Captured: {i}/100', (30, 30), cv2.FONT_HERSHEY_SIMPLEX, 1, (255, 0, 20), 2, cv2.LINE_AA)
+                    if j % 10 == 0:
+                        name = newusername + '_' + str(i) + '.jpg'
+                        cv2.imwrite(userimagefolder + '/' + name, frame[y:y + h, x:x + w])
+                        i += 1
+                    j += 1
+                if j == 1000:
                     break
-                cv2.imshow('Adding new User',frame)
-                if cv2.waitKey(1)==27:
+                cv2.imshow('Adding new User', frame)
+                if cv2.waitKey(1) == 27:
                     break
         cap.release()
         cv2.destroyAllWindows()
         print('Training Model')
         train_model()
-        names,rolls,inTimes,outTimes,totalTimes,l = extract_attendance()    
-        return render_template('home.html',names=names,rolls=rolls,inTimes=inTimes,outTimes=outTimes,totalTimes=totalTimes,l=l,totalreg=totalreg(),datetoday2=datetoday2) 
+
+        # Gửi email
+        send_email(newuseremail, newusername)
+
+        names, rolls, inTimes, outTimes, totalTimes, l = extract_attendance()
+        return render_template('home.html', names=names, rolls=rolls, inTimes=inTimes, outTimes=outTimes, totalTimes=totalTimes, l=l, totalreg=totalreg(), datetoday2=datetoday2)
     else:
-        names,rolls,inTimes,outTimes,totalTimes,l = extract_attendance()    
-        return render_template('home.html',names=names,rolls=rolls,inTimes=inTimes,outTimes=outTimes,totalTimes=totalTimes,l=l,totalreg=totalreg(),datetoday2=datetoday2,mess='User ID has existed. Please type other ID.') 
-
-
-    data = request.json
-    user_email = data.get('email')
-    user_name = data.get('name')
-    check_in_time = data.get('check_in_time')
-
-    if not (user_email and user_name and check_in_time):
-        return jsonify({'error': 'Missing data'}), 400
-
-    try:
-        # Tạo email
-        subject = "Attendance Check-In Confirmation"
-        body = f"""
-        Dear {user_name},
-
-        You have successfully checked in at {check_in_time}.
-        
-        Thank you!
-        """
-
-        msg = MIMEMultipart()
-        msg['From'] = EMAIL_ADDRESS
-        msg['To'] = user_email
-        msg['Subject'] = subject
-        msg.attach(MIMEText(body, 'plain'))
-
-        # Kết nối SMTP và gửi email
-        with smtplib.SMTP(SMTP_SERVER, SMTP_PORT) as server:
-            server.starttls()
-            server.login(EMAIL_ADDRESS, EMAIL_PASSWORD)
-            server.send_message(msg)
-
-        return jsonify({'message': 'Attendance email sent successfully!'})
-
-    except Exception as e:
-        return jsonify({'error': str(e)}), 500
+        names, rolls, inTimes, outTimes, totalTimes, l = extract_attendance()
+        return render_template('home.html', names=names, rolls=rolls, inTimes=inTimes, outTimes=outTimes, totalTimes=totalTimes, l=l, totalreg=totalreg(), datetoday2=datetoday2, mess='User ID has existed. Please type other ID.')
 
 #### Our main function which runs the Flask App
 if __name__ == '__main__':
