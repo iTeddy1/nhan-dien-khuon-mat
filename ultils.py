@@ -15,6 +15,15 @@ from flask_mail import Mail, Message
 #### Defining Flask App
 app = Flask(__name__)
 
+# Cấu hình mail server
+app.config['MAIL_SERVER'] = 'smtp.gmail.com'
+app.config['MAIL_PORT'] = 587
+app.config['MAIL_USE_TLS'] = True
+app.config['MAIL_USE_SSL'] = False
+app.config['MAIL_USERNAME'] = 'duytrung.ng1@gmail.com'  # Email của bạn
+app.config['MAIL_PASSWORD'] = 'nics wtpn qhcq dvbo'  # Mật khẩu ứng dụng
+app.config['MAIL_DEFAULT_SENDER'] = 'duytrung.ng1@gmail.com'
+
 #### Saving Date today in 2 different formats
 datetoday = date.today().strftime("%m_%d_%y")
 datetoday2 = date.today().strftime("%d-%B-%Y")
@@ -96,7 +105,7 @@ def extract_attendance():
     if not os.path.isfile(file_path):
         # Tạo file CSV nếu chưa tồn tại
         with open(file_path, 'w') as f:
-            f.write('Name,ID,Check_in_time,Check_out_time,Total_time\n')
+            f.write('ID,Name,Check_in_time,Check_out_time,Total_time\n')
         return [], [], [], [], [], 0
 
     try:
@@ -104,7 +113,7 @@ def extract_attendance():
         df = pd.read_csv(file_path)
 
         # Kiểm tra và xử lý các cột nếu thiếu giá trị
-        required_columns = ['Name', 'ID', 'Check_in_time', 'Check_out_time', 'Total_time']
+        required_columns = ['ID', 'Name', 'Check_in_time', 'Check_out_time', 'Total_time']
         for col in required_columns:
             if col not in df.columns:
                 df[col] = ''  # Thêm cột nếu thiếu và để giá trị mặc định là rỗng
@@ -126,59 +135,25 @@ def extract_attendance():
         print(f"Lỗi khi đọc file CSV: {e}")
         return [], [], [], [], [], 0
 
-
 #### Add Attendance of a specific user
 def add_attendance(name):
     username = name.split('_')[0]
     userid = name.split('_')[1]
-    current_time = datetime.now().strftime("%H:%M:%S")
-    file_path = f'Attendance/Attendance-{datetoday}.csv'
+    useremail = name.split('_')[2]
+    #create time with time and date
+    current_time = datetime.now().strftime("%H:%M:%S-%d/%m/%Y")
+    file_path = f'Attendance/Attendances.csv'
 
     # Nếu file không tồn tại, tạo file mới với tiêu đề
     if not os.path.isfile(file_path):
         with open(file_path, 'w', newline='') as f:
             writer = csv.writer(f)
-            writer.writerow(['Name', 'ID', 'Check_in_time', 'Check_out_time', 'Total_time'])
+            writer.writerow(['ID', 'Name' , 'Email', "Created at"])
 
-    # Đọc dữ liệu hiện có
-    with open(file_path, 'r') as f:
-        reader = csv.DictReader(f)
-        existing_ids = [row['ID'] for row in reader]
+    with open(file_path, 'a', newline='') as f:
+        writer = csv.writer(f)
+        writer.writerow([userid, username,useremail, current_time]) 
 
-
-    # Kiểm tra xem user đã có trong file hay chưa
-    if userid not in existing_ids:
-        with open(file_path, 'a', newline='') as f:
-            writer = csv.writer(f)
-            writer.writerow([username, userid, current_time, '', ''])  # Check_out_time & Total_time trống
-    else:
-        # Nếu `userid` tồn tại, cập nhật Check_out_time và Total_time
-        df = pd.read_csv(file_path)
-        row_index = df[df['ID'] == userid].index[0]
-
-        if pd.isna(df.loc[row_index, 'Check_out_time']):
-            df.loc[row_index, 'Check_out_time'] = current_time
-
-            in_time = datetime.strptime(df.loc[row_index, 'Check_in_time'], '%H:%M:%S')
-            out_time = datetime.strptime(df.loc[row_index, 'Check_out_time'], '%H:%M:%S')
-
-            total_time = out_time - in_time
-            df.loc[row_index, 'Total_time'] = str(total_time)
-
-            # Ghi đè lại file
-            df.to_csv(file_path, index=False)
-
-#Get check in and out time of user
-def getUserTime(userid):
-    df = pd.read_csv(f'Attendance/Attendance-{datetoday}.csv')
-    row_index = 0
-
-    for i in range(0, df['ID'].count()):
-        if str(df['ID'][i]) == userid:
-            row_index = i
-            break
-            
-    return str(df['Check_in_time'][row_index]), str(df['Check_out_time'][row_index])
 
 #Check existed userID
 def checkUserID(newuserid):
@@ -187,6 +162,36 @@ def checkUserID(newuserid):
         if listID[i].split('_')[1] == newuserid:
             return True
     return False
+
+def handle_checkin_checkout(identified_person):
+    username = identified_person.split('_')[0]
+    userid = identified_person.split('_')[1]
+    current_time = datetime.now().strftime("%H:%M:%S")
+    file_path = f'Attendance/Attendance-{datetoday}.csv'
+
+    # If file doesn't exist, create it
+    if not os.path.isfile(file_path):
+        with open(file_path, 'w', newline='') as f:
+            writer = csv.writer(f)
+            writer.writerow(['ID', 'Name', 'Check_in_time', 'Check_out_time', 'Total_time'])
+
+    # Handle check-in and check-out logic
+    df = pd.read_csv(file_path)
+    if userid not in df['ID'].values:
+        # Check-in if not present
+        with open(file_path, 'a', newline='') as f:
+            writer = csv.writer(f)
+            writer.writerow([userid, username,  current_time, '', ''])
+    else:
+        # Handle check-out logic
+        row_index = df[df['ID'] == userid].index[0]
+        if pd.isna(df.loc[row_index, 'Check_out_time']):
+            df.loc[row_index, 'Check_out_time'] = current_time
+            in_time = datetime.strptime(df.loc[row_index, 'Check_in_time'], '%H:%M:%S')
+            out_time = datetime.strptime(df.loc[row_index, 'Check_out_time'], '%H:%M:%S')
+            total_time = out_time - in_time
+            df.loc[row_index, 'Total_time'] = str(total_time)
+            df.to_csv(file_path, index=False)
 
 def send_email(to_email, username):
     """
@@ -212,3 +217,15 @@ def send_email(to_email, username):
         print(f"Email sent to {to_email}")
     except Exception as e:
         print(f"Failed to send email: {e}")
+
+#Get check in and out time of user
+def getUserTime(userid):
+    df = pd.read_csv(f'Attendance/Attendance-{datetoday}.csv')
+    row_index = 0
+
+    for i in range(0, df['ID'].count()):
+        if str(df['ID'][i]) == userid:
+            row_index = i
+            break
+            
+    return str(df['Check_in_time'][row_index]), str(df['Check_out_time'][row_index])

@@ -5,19 +5,11 @@ from flask import Flask,request,render_template
 from datetime import date
 from flask_mail import Mail
 
-from ultils import totalreg, getusers, delUser, extract_faces, identify_face, train_model, add_attendance, extract_attendance, getUserTime, checkUserID, send_email
+from ultils import handle_checkin_checkout, totalreg, getusers, delUser, extract_faces, identify_face, train_model, add_attendance, extract_attendance, getUserTime, checkUserID, send_email
 
 #### Defining Flask App
 app = Flask(__name__)
 
-# Cấu hình mail server
-app.config['MAIL_SERVER'] = 'smtp.gmail.com'
-app.config['MAIL_PORT'] = 587
-app.config['MAIL_USE_TLS'] = True
-app.config['MAIL_USE_SSL'] = False
-app.config['MAIL_USERNAME'] = 'duytrung.ng1@gmail.com'  # Email của bạn
-app.config['MAIL_PASSWORD'] = 'nics wtpn qhcq dvbo'  # Mật khẩu ứng dụng
-app.config['MAIL_DEFAULT_SENDER'] = 'duytrung.ng1@gmail.com'
 
 #### Saving Date today in 2 different formats
 datetoday = date.today().strftime("%m_%d_%y")
@@ -91,9 +83,7 @@ def start():
     cv2.destroyAllWindows()
 
     if identified_person:
-        add_attendance(identified_person)
-        username = identified_person.split('_')[0]
-        userid = identified_person.split('_')[1]
+        handle_checkin_checkout(identified_person)
     
     names,rolls,inTimes,outTimes,totalTimes,l = extract_attendance()    
 
@@ -123,7 +113,6 @@ def start():
 def add():
     newusername = request.form['newusername']
     newuseremail = request.form['newuseremail']
-    # Tự động tạo user ID bằng cách hash email
     newuserid = str(uuid.uuid4())[:8]  # Lấy 8 ký tự đầu tiên của UUID
 
     # Kiểm tra nếu User ID đã tồn tại
@@ -159,7 +148,7 @@ def add():
         send_email(newuseremail, newusername)
 
         # Thêm người dùng vào bảng Attendance
-        add_attendance(f"{newusername}_{newuserid}")
+        add_attendance(f"{newusername}_{newuserid}_{newuseremail}")
 
         # Trả về giao diện
         names, rolls, inTimes, outTimes, totalTimes, l = extract_attendance()
