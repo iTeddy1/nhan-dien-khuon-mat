@@ -1,3 +1,5 @@
+import csv
+import uuid
 import cv2
 import os
 from flask import Flask,request,render_template,jsonify
@@ -113,45 +115,81 @@ def train_model():
 
 #### Extract info from today's attendance file in attendance folder
 def extract_attendance():
-    df = pd.read_csv(f'Attendance/Attendance-{datetoday}.csv')
-    names = df['Name']
-    rolls = df['ID']
-    inTimes = df['Check_in_time']
-    outTimes = df['Check_out_time']
-    totalTimes = df['Total_time']
-    l = len(df)
-    return names,rolls,inTimes,outTimes,totalTimes,l
+    file_path = f'Attendance/Attendance-{datetoday}.csv'
+    if not os.path.isfile(file_path):
+        # Tạo file CSV nếu chưa tồn tại
+        with open(file_path, 'w') as f:
+            f.write('Name,ID,Check_in_time,Check_out_time,Total_time\n')
+        return [], [], [], [], [], 0
+
+    try:
+        # Đọc file CSV
+        df = pd.read_csv(file_path)
+
+        # Kiểm tra và xử lý các cột nếu thiếu giá trị
+        required_columns = ['Name', 'ID', 'Check_in_time', 'Check_out_time', 'Total_time']
+        for col in required_columns:
+            if col not in df.columns:
+                df[col] = ''  # Thêm cột nếu thiếu và để giá trị mặc định là rỗng
+
+        # Thay thế giá trị NaN bằng chuỗi rỗng
+        df.fillna('', inplace=True)
+
+        # Trích xuất dữ liệu
+        names = df['Name']
+        rolls = df['ID']
+        inTimes = df['Check_in_time']
+        outTimes = df['Check_out_time']
+        totalTimes = df['Total_time']
+        l = len(df)
+
+        return names, rolls, inTimes, outTimes, totalTimes, l
+
+    except Exception as e:
+        print(f"Lỗi khi đọc file CSV: {e}")
+        return [], [], [], [], [], 0
+
 
 #### Add Attendance of a specific user
 def add_attendance(name):
     username = name.split('_')[0]
     userid = name.split('_')[1]
     current_time = datetime.now().strftime("%H:%M:%S")
-    
-    df = pd.read_csv(f'Attendance/Attendance-{datetoday}.csv')
+    file_path = f'Attendance/Attendance-{datetoday}.csv'
 
-    if int(userid) not in list(df['ID']):
-        with open(f'Attendance/Attendance-{datetoday}.csv','a') as f:
-            f.write(f'\n{username},{userid},{current_time},'',''')
+    # Nếu file không tồn tại, tạo file mới với tiêu đề
+    if not os.path.isfile(file_path):
+        with open(file_path, 'w', newline='') as f:
+            writer = csv.writer(f)
+            writer.writerow(['Name', 'ID', 'Check_in_time', 'Check_out_time', 'Total_time'])
+
+    # Đọc dữ liệu hiện có
+    with open(file_path, 'r') as f:
+        reader = csv.DictReader(f)
+        existing_ids = [row['ID'] for row in reader]
+
+
+    # Kiểm tra xem user đã có trong file hay chưa
+    if userid not in existing_ids:
+        with open(file_path, 'a', newline='') as f:
+            writer = csv.writer(f)
+            writer.writerow([username, userid, current_time, '', ''])  # Check_out_time & Total_time trống
     else:
-        row_index = 0
+        # Nếu `userid` tồn tại, cập nhật Check_out_time và Total_time
+        df = pd.read_csv(file_path)
+        row_index = df[df['ID'] == userid].index[0]
 
-        for i in range(0, df['ID'].count()):
-            if str(df['ID'][i]) == userid:
-                row_index = i
-                break
-
-        if str(df['Check_out_time'][row_index]) == 'nan':
+        if pd.isna(df.loc[row_index, 'Check_out_time']):
             df.loc[row_index, 'Check_out_time'] = current_time
 
-            inTime = (datetime.strptime(df['Check_in_time'][row_index], '%H:%M:%S'))
-            outTime = (datetime.strptime(df['Check_out_time'][row_index], '%H:%M:%S'))
+            in_time = datetime.strptime(df.loc[row_index, 'Check_in_time'], '%H:%M:%S')
+            out_time = datetime.strptime(df.loc[row_index, 'Check_out_time'], '%H:%M:%S')
 
-            totalTime = outTime - inTime
+            total_time = out_time - in_time
+            df.loc[row_index, 'Total_time'] = str(total_time)
 
-            df.loc[row_index, 'Total_time'] = totalTime
-
-            df.to_csv(f'Attendance/Attendance-{datetoday}.csv', index=False)
+            # Ghi đè lại file
+            df.to_csv(file_path, index=False)
 
 #Get check in and out time of user
 def getUserTime(userid):
@@ -257,9 +295,6 @@ def start():
         add_attendance(identified_person)
         username = identified_person.split('_')[0]
         userid = identified_person.split('_')[1]
-        useremail = identified_person.split('_')[2]
-
-
     
     names,rolls,inTimes,outTimes,totalTimes,l = extract_attendance()    
 
@@ -288,11 +323,13 @@ def start():
 @app.route('/add', methods=['GET', 'POST'])
 def add():
     newusername = request.form['newusername']
-    newuserid = request.form['newuserid']
     newuseremail = request.form['newuseremail']
+    # Tự động tạo user ID bằng cách hash email
+    newuserid = str(uuid.uuid4())[:8]  # Lấy 8 ký tự đầu tiên của UUID
 
+    # Kiểm tra nếu User ID đã tồn tại
     if checkUserID(newuserid) == False:
-        userimagefolder = 'static/faces/' + newusername + '_' + str(newuserid) + '_' + newuseremail
+        userimagefolder = f'static/faces/{newusername}_{newuserid}_{newuseremail}'
         if not os.path.isdir(userimagefolder):
             os.makedirs(userimagefolder)
         cap = cv2.VideoCapture(0)
@@ -319,9 +356,13 @@ def add():
         print('Training Model')
         train_model()
 
-        # Gửi email
+        # Gửi email thông báo thành công
         send_email(newuseremail, newusername)
 
+        # Thêm người dùng vào bảng Attendance
+        add_attendance(f"{newusername}_{newuserid}")
+
+        # Trả về giao diện
         names, rolls, inTimes, outTimes, totalTimes, l = extract_attendance()
         return render_template('home.html', names=names, rolls=rolls, inTimes=inTimes, outTimes=outTimes, totalTimes=totalTimes, l=l, totalreg=totalreg(), datetoday2=datetoday2)
     else:
