@@ -178,14 +178,18 @@ def send_email(to_email, username):
     Gửi email thông báo cho nhân viên sau khi thêm user thành công.
     """
     subject = "Thông Báo: Đăng Ký Thành Công"
-    body = f"""
-    Xin chào {username},
-
-    Bạn đã được thêm thành công vào hệ thống chấm công.
-
-    Trân trọng,
-    Đội ngũ quản lý.
-    """
+    body = f""" <html> 
+        <body> 
+            <div style="font-family: Arial, sans-serif; line-height: 1.6;"> 
+                <h2 style="color: #4CAF50;">Xin chào {username},</h2> 
+                <p>Bạn đã được thêm thành công vào hệ thống chấm công.</p> 
+                <p>Chào mừng bạn đến với đội ngũ của chúng tôi!</p> <p>Trân trọng,</p> 
+                <p><strong>Đội ngũ quản lý</strong></p> 
+                <hr style="border: 0; border-top: 1px solid #eee;"> 
+                <p style="font-size: 0.9em; color: #555;">Nếu bạn có bất kỳ câu hỏi nào, vui lòng liên hệ với chúng tôi qua email này.</p> 
+            </div> 
+        </body> 
+    </html> """
 
     try:
         msg = Message(subject, recipients=[to_email], body=body)
