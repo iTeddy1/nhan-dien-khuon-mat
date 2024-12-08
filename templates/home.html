@@ -58,8 +58,8 @@
                 <thead>
                     <tr class="bg-gray-200">
                         <th class="border border-gray-300 px-4 py-2">STT</th>
-                        <th class="border border-gray-300 px-4 py-2">Tên</th>
                         <th class="border border-gray-300 px-4 py-2">ID</th>
+                        <th class="border border-gray-300 px-4 py-2">Tên</th>
                         <th class="border border-gray-300 px-4 py-2">Thời gian vào</th>
                         <th class="border border-gray-300 px-4 py-2">Thời gian ra</th>
                         <th class="border border-gray-300 px-4 py-2">Tổng thời gian làm việc</th>
@@ -70,8 +70,8 @@
                     {% for i in range(l) %}
                     <tr class="hover:bg-gray-100">
                         <td class="border border-gray-300 px-4 py-2">{{ i+1 }}</td>
-                        <td class="border border-gray-300 px-4 py-2">{{ names[i] }}</td>
                         <td class="border border-gray-300 px-4 py-2">{{ rolls[i] }}</td>
+                        <td class="border border-gray-300 px-4 py-2">{{ names[i] }}</td>
                         <td class="border border-gray-300 px-4 py-2">{{ inTimes[i] }}</td>
                         <td class="border border-gray-300 px-4 py-2">{{ outTimes[i] }}</td>
                         <td class="border border-gray-300 px-4 py-2">{{ totalTimes[i] }}</td>

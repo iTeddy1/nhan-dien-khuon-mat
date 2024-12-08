@@ -1,10 +1,9 @@
 import uuid
 import cv2
 import os
+import dlib
 from flask import Flask,request,render_template
 from datetime import date
-from flask_mail import Mail
-
 from ultils import handle_checkin_checkout, totalreg, getusers, delUser, extract_faces, identify_face, train_model, add_attendance, extract_attendance, getUserTime, checkUserID, send_email
 
 #### Defining Flask App
@@ -24,7 +23,7 @@ if not os.path.isdir('static/faces'):
     os.makedirs('static/faces')
 if f'Attendance-{datetoday}.csv' not in os.listdir('Attendance'):
     with open(f'Attendance/Attendance-{datetoday}.csv','w') as f:
-        f.write('Name,ID,Check_in_time,Check_out_time,Total_time')
+        f.write('ID,Name,Check_in_time,Check_out_time,Total_time\n')
 if not os.path.isdir(f'Attendance/Attendance_faces-{datetoday}'):
     os.makedirs(f'Attendance/Attendance_faces-{datetoday}')
 
@@ -59,7 +58,8 @@ def start():
 
     cap = cv2.VideoCapture(0)
     ret = True
-    identified_person = None
+    identified_person = None    
+    escKey = cv2.waitKey(1)
 
     while ret:
         ret, frame = cap.read()
@@ -76,12 +76,14 @@ def start():
             cv2.putText(frame, f'{identified_person}', (30, 30), cv2.FONT_HERSHEY_SIMPLEX, 1, (255, 0, 20), 2)
 
         cv2.imshow('Attendance', frame)
-        if cv2.waitKey(1) == 27: # phim esc break chuong trinh
+
+        if escKey == 27:  # Exit on ESC key
             break
 
     cap.release()
     cv2.destroyAllWindows()
 
+    # identified_person: chuỗi có dạng name_id_email
     if identified_person:
         handle_checkin_checkout(identified_person)
     
@@ -148,7 +150,7 @@ def add():
         send_email(newuseremail, newusername)
 
         # Thêm người dùng vào bảng Attendance
-        add_attendance(f"{newusername}_{newuserid}_{newuseremail}")
+        add_attendance(f"{newusername}_{newuserid}_{newuseremail}") # username_id_email
 
         # Trả về giao diện
         names, rolls, inTimes, outTimes, totalTimes, l = extract_attendance()

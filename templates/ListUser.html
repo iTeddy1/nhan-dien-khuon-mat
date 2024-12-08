@@ -12,8 +12,8 @@
 <body class="min-h-screen bg-cover bg-center" style="background-image: url('https://cutewallpaper.org/21/1920-x-1080-gif/1920x1080-Wallpapercartoon-Wallpapers-Driverlayer-Search-.gif');">
 	<!-- Navigation -->
 	<nav class="flex justify-end gap-8 p-4 bg-gray-800 text-white">
-		<a href="/" class="hover:text-gray-400">Home</a>
-		<a href="listUsers" class="text-gray-400 hover:text-gray-200">List User</a>
+		<a href="/" class="hover:text-gray-400">Trang chủ</a>
+		<a href="listUsers" class="text-gray-400 hover:text-gray-200">Danh sách</a>
 	</nav>
 
 	<!-- Header -->
@@ -31,9 +31,9 @@
 				<thead>
 					<tr class="bg-gray-800 text-white text-left">
 						<th class="py-4 px-6">No</th>
+						<th class="py-4 px-6">ID</th>
 						<th class="py-4 px-6">Name</th>
 						<th class="py-4 px-6">Email</th>
-						<th class="py-4 px-6">ID</th>
 						<th class="py-4 px-6">Action</th>
 					</tr>
 				</thead>
@@ -43,9 +43,9 @@
 						{% for i in range(l) %}
 						<tr>
 							<td class="py-4 px-6">{{ i+1 }}</td>
+							<td class="py-4 px-6">{{ rolls[i] }}</td>
 							<td class="py-4 px-6">{{ names[i] }}</td>
 							<td class="py-4 px-6">{{ emails[i] }}</td>
-							<td class="py-4 px-6">{{ rolls[i] }}</td>
 							<td class="py-4 px-6">
 								<form action="{{ url_for('deleteUser') }}" method="post" class="inline">
 									<input type="hidden" name="userid" value="{{ rolls[i] }}">

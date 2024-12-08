@@ -1,8 +1,7 @@
 import csv
-import uuid
 import cv2
 import os
-from flask import Flask,request,render_template,jsonify
+from flask import Flask
 from datetime import date
 from datetime import datetime
 import numpy as np
@@ -20,8 +19,8 @@ app.config['MAIL_SERVER'] = 'smtp.gmail.com'
 app.config['MAIL_PORT'] = 587
 app.config['MAIL_USE_TLS'] = True
 app.config['MAIL_USE_SSL'] = False
-app.config['MAIL_USERNAME'] = 'duytrung.ng1@gmail.com'  # Email của bạn
-app.config['MAIL_PASSWORD'] = 'nics wtpn qhcq dvbo'  # Mật khẩu ứng dụng
+app.config['MAIL_USERNAME'] = 'duytrung.ng1@gmail.com'  
+app.config['MAIL_PASSWORD'] = 'qmwv uicf tpcu edmu'  
 app.config['MAIL_DEFAULT_SENDER'] = 'duytrung.ng1@gmail.com'
 
 #### Saving Date today in 2 different formats
@@ -59,9 +58,29 @@ def getusers():
 
 #### delete user
 def delUser(userid, username, email):
-    for user in os.listdir('static/faces'):
-        if user.split('_')[1] == userid:
-            shutil.rmtree(f'static/faces/{username}_{userid}_{email}', ignore_errors=True)
+    # Xóa thư mục khuôn mặt của nhân viên
+    face_dir = f'static/faces/{username}_{userid}_{email}'
+    if os.path.exists(face_dir):
+        shutil.rmtree(face_dir, ignore_errors=True)
+    
+    # Xóa thông tin nhân viên trong file CSV
+    file_path = 'Attendance/Attendances.csv'
+    if os.path.isfile(file_path):
+        updated_rows = []
+        
+        # Đọc dữ liệu từ file CSV và giữ lại những dòng không khớp với thông tin nhân viên cần xóa
+        with open(file_path, 'r') as f:
+            reader = csv.reader(f)
+            headers = next(reader)  # Lưu tiêu đề
+            for row in reader:
+                if not (row[0] == userid and row[1] == username and row[2] == email):
+                    updated_rows.append(row)
+        
+        # Ghi lại dữ liệu đã cập nhật vào file CSV (ghi đè)
+        with open(file_path, 'w', newline='') as f:
+            writer = csv.writer(f)
+            writer.writerow(headers)  # Ghi lại tiêu đề
+            writer.writerows(updated_rows)  # Ghi các dòng còn lại
 
 #### extract the face from an image
 def extract_faces(img):
@@ -140,7 +159,6 @@ def add_attendance(name):
     username = name.split('_')[0]
     userid = name.split('_')[1]
     useremail = name.split('_')[2]
-    #create time with time and date
     current_time = datetime.now().strftime("%H:%M:%S-%d/%m/%Y")
     file_path = f'Attendance/Attendances.csv'
 
@@ -152,7 +170,7 @@ def add_attendance(name):
 
     with open(file_path, 'a', newline='') as f:
         writer = csv.writer(f)
-        writer.writerow([userid, username,useremail, current_time]) 
+        writer.writerow([userid, username, useremail, current_time]) 
 
 
 #Check existed userID
@@ -173,7 +191,7 @@ def handle_checkin_checkout(identified_person):
     if not os.path.isfile(file_path):
         with open(file_path, 'w', newline='') as f:
             writer = csv.writer(f)
-            writer.writerow(['ID', 'Name', 'Check_in_time', 'Check_out_time', 'Total_time'])
+            writer.writerow(['ID', 'Name', 'Check_in_time', 'Check_out_time', 'Total_time\n'])
 
     # Handle check-in and check-out logic
     df = pd.read_csv(file_path)
@@ -181,7 +199,7 @@ def handle_checkin_checkout(identified_person):
         # Check-in if not present
         with open(file_path, 'a', newline='') as f:
             writer = csv.writer(f)
-            writer.writerow([userid, username,  current_time, '', ''])
+            writer.writerow([userid, username, current_time, '', '\n'])
     else:
         # Handle check-out logic
         row_index = df[df['ID'] == userid].index[0]
@@ -216,7 +234,7 @@ def send_email(to_email, username):
         mail.send(msg)
         print(f"Email sent to {to_email}")
     except Exception as e:
-        print(f"Failed to send email: {e}")
+        print(f"Failed to send email: {e},to {to_email}, {username}")
 
 #Get check in and out time of user
 def getUserTime(userid):
