@@ -1,7 +1,6 @@
 import uuid
 import cv2
 import os
-import dlib
 from flask import Flask,request,render_template
 from datetime import date
 from ultils import handle_checkin_checkout, totalreg, getusers, delUser, extract_faces, identify_face, train_model, add_attendance, extract_attendance, getUserTime, checkUserID, send_email
@@ -59,7 +58,7 @@ def start():
     cap = cv2.VideoCapture(0)
     ret = True
     identified_person = None    
-    escKey = cv2.waitKey(1)
+    escKey = cv2.waitKey
 
     while ret:
         ret, frame = cap.read()
@@ -73,11 +72,12 @@ def start():
             cv2.rectangle(frame, (x, y), (x + w, y + h), (255, 0, 20), 2)
             face = cv2.resize(frame[y:y + h, x:x + w], (50, 50))
             identified_person = identify_face(face.reshape(1, -1))[0]
+            # print(identified_person)
             cv2.putText(frame, f'{identified_person}', (30, 30), cv2.FONT_HERSHEY_SIMPLEX, 1, (255, 0, 20), 2)
 
         cv2.imshow('Attendance', frame)
 
-        if escKey == 27:  # Exit on ESC key
+        if escKey(1) == 27:  # Exit on ESC key
             break
 
     cap.release()
@@ -161,7 +161,7 @@ def add():
 
 #### Our main function which runs the Flask App
 if __name__ == '__main__':
-    # app.run(debug=True)
+    app.run(debug=True)
     app.run(host='0.0.0.0', port='6969')
 
 

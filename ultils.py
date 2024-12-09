@@ -2,6 +2,7 @@ import csv
 import cv2
 import os
 from flask import Flask
+from flask_mail import Mail, Message
 from datetime import date
 from datetime import datetime
 import numpy as np
@@ -9,7 +10,6 @@ from sklearn.neighbors import KNeighborsClassifier
 import pandas as pd
 import joblib
 import shutil
-from flask_mail import Mail, Message
 
 #### Defining Flask App
 app = Flask(__name__)
