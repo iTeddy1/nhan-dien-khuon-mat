@@ -3,7 +3,7 @@ import cv2
 import os
 from flask import Flask,request,render_template
 from datetime import date
-from ultils import handle_checkin_checkout, totalreg, getusers, delUser, extract_faces, identify_face, train_model, add_attendance, extract_attendance, getUserTime, checkUserID, send_email
+from ultils import handle_checkin_checkout, save_attendance_image, totalreg, getusers, delUser, extract_faces, identify_face, train_model, add_attendance, extract_attendance, getUserTime, checkUserID, send_email
 
 #### Defining Flask App
 app = Flask(__name__)
@@ -72,7 +72,7 @@ def start():
         ret, frame = cap.read()
         if not ret or frame is None:
             print("Failed to grab frame")
-            break  # Exit the loop if no frame is captured
+            render_template('home.html',mess="Failed to grab frame")  # Exit the loop if no frame is captured
 
         faces = extract_faces(frame)
         if faces is not None:  # Check if faces is not None
@@ -94,9 +94,11 @@ def start():
     # identified_person: chuỗi có dạng name_id_email
     if identified_person:
         handle_checkin_checkout(identified_person)
-    
-    names,rolls,inTimes,outTimes,totalTimes,l = extract_attendance()    
+    else:
+        return render_template('home.html', totalreg=totalreg(), datetoday2=datetoday2, mess='No face detected or person not recognized.')
 
+    names,rolls,inTimes,outTimes,totalTimes,l = extract_attendance()    
+    print(identified_person)
     #Save attendance image
     username = identified_person.split('_')[0]
     userid = identified_person.split('_')[1]
@@ -107,13 +109,10 @@ def start():
 
     print(inTime, outTime)
     if inTime != 'nan':
-        name = username+'_'+userid+'_'+'checkin'+'.jpg'
-        if name not in os.listdir(userimagefolder):
-            cv2.imwrite(userimagefolder+'/'+name,frame[y:y+h,x:x+w])
+        save_attendance_image(username, userid, frame, x, y, w, h, 'checkin')
     if outTime != 'nan':
-        name = username+'_'+userid+'_'+'checkout'+'.jpg'
-        if name not in os.listdir(userimagefolder):
-            cv2.imwrite(userimagefolder+'/'+name,frame[y:y+h,x:x+w])
+        save_attendance_image(username, userid, frame, x, y, w, h, 'checkout')
+
 
     return render_template('home.html',names=names,rolls=rolls,inTimes=inTimes,outTimes=outTimes,totalTimes=totalTimes,l=l,totalreg=totalreg(),datetoday2=datetoday2) 
 

@@ -180,34 +180,47 @@ def checkUserID(newuserid):
     return False
 
 def handle_checkin_checkout(identified_person):
+    file_path = f'Attendance/Attendance-{datetoday}.csv'
     username = identified_person.split('_')[0]
     userid = identified_person.split('_')[1]
     current_time = datetime.now().strftime("%H:%M:%S")
-    file_path = f'Attendance/Attendance-{datetoday}.csv'
 
     # If file doesn't exist, create it
     if not os.path.isfile(file_path):
-        with open(file_path, 'w', newline='') as f:
+        with open(file_path, 'w') as f:
             writer = csv.writer(f)
             writer.writerow(['ID', 'Name', 'Check_in_time', 'Check_out_time', 'Total_time\n'])
 
-    # Handle check-in and check-out logic
+    # Đọc dữ liệu từ file CSV
     df = pd.read_csv(file_path)
+
     if userid not in df['ID'].values:
-        # Check-in if not present
+        # Người dùng chưa check-in
         with open(file_path, 'a', newline='') as f:
-            writer = csv.writer(f)
-            writer.writerow([userid, username, current_time, '', '\n'])
+            new_row = {'ID': userid, 'Name': username, 'Check_in_time': current_time, 
+                       'Check_out_time': '', 'Total_time': ''}
+            df = pd.concat([df, pd.DataFrame([new_row])], ignore_index=True)
     else:
-        # Handle check-out logic
-        row_index = df[df['ID'] == userid].index[0]
-        if pd.isna(df.loc[row_index, 'Check_out_time']):
-            df.loc[row_index, 'Check_out_time'] = current_time
-            in_time = datetime.strptime(df.loc[row_index, 'Check_in_time'], '%H:%M:%S')
-            out_time = datetime.strptime(df.loc[row_index, 'Check_out_time'], '%H:%M:%S')
-            total_time = out_time - in_time
-            df.loc[row_index, 'Total_time'] = str(total_time)
-            df.to_csv(file_path, index=False)
+        # Người dùng đã check-in, cập nhật check-out
+        idx = df[df['ID'] == userid].index[0]
+        if pd.isna(df.at[idx, 'Check_out_time']) or df.at[idx, 'Check_out_time'] == '':
+            df.at[idx, 'Check_out_time'] = current_time
+            check_in_time = datetime.strptime(df.at[idx, 'Check_in_time'], '%H:%M:%S')
+            total_time = datetime.strptime(current_time, '%H:%M:%S') - check_in_time
+            df.at[idx, 'Total_time'] = f'{total_time}'            
+
+    df.to_csv(file_path, index=False)
+
+
+def save_attendance_image(user_name: str, user_id: str, frame, x, y, w, h, action: str):
+    folder_path = f'Attendance/Attendance_faces-{datetoday}/{user_name}_{user_id}_{datetoday2}'
+    if not os.path.isdir(folder_path):
+        os.makedirs(folder_path)
+
+    image_name = f'{user_name}_{user_id}_{action}.jpg'
+    if image_name not in os.listdir(folder_path):
+        cv2.imwrite(f'{folder_path}/{image_name}', frame[y:y+h, x:x+w])
+
 
 def send_email(to_email, username):
     """
