@@ -102,7 +102,7 @@ def train_model():
     faces = []
     labels = []
     userlist = os.listdir('static/faces')
-    print(userlist)
+    # print(userlist)
     for user in userlist:
         for imgname in os.listdir(f'static/faces/{user}'):
             img = cv2.imread(f'static/faces/{user}/{imgname}')
@@ -116,7 +116,6 @@ def train_model():
     knn = KNeighborsClassifier(n_neighbors=5)
     knn.fit(faces,labels)
     joblib.dump(knn,'static/face_recognition_model.pkl')
-
 
 #### Extract info from today's attendance file in attendance folder
 def extract_attendance():
@@ -171,7 +170,6 @@ def add_attendance(name):
     with open(file_path, 'a', newline='') as f:
         writer = csv.writer(f)
         writer.writerow([userid, username, useremail, current_time]) 
-
 
 #Check existed userID
 def checkUserID(newuserid):

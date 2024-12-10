@@ -1,89 +1,90 @@
 <!DOCTYPE html>
 <html lang="en">
-
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <head>
+    <meta charset="UTF-8" />
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1.0" />
     <title>Hệ Thống Chấm Công Bằng Khuôn Mặt</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script type="text/javascript">
-        function startTime() {
-            const today = new Date();
-            const day = today.getDate();
-            const month = today.getMonth() + 1;
-            const year = today.getFullYear();
-            let h = today.getHours();
-            let m = today.getMinutes();
-            let s = today.getSeconds();
-            m = m < 10 ? "0" + m : m;
-            s = s < 10 ? "0" + s : s;
-            document.getElementById('clock').textContent = `${day}/${month}/${year} | ${h}:${m}:${s}`;
-            setTimeout(startTime, 500);
-        }
+      function startTime() {
+        const today = new Date();
+        const day = today.getDate();
+        const month = today.getMonth() + 1;
+        const year = today.getFullYear();
+        let h = today.getHours();
+        let m = today.getMinutes();
+        let s = today.getSeconds();
+        m = m < 10 ? "0" + m : m;
+        s = s < 10 ? "0" + s : s;
+        document.getElementById("clock").textContent = `${day}/${month}/${year} | ${h}:${m}:${s}`;
+        setTimeout(startTime, 500);
+      }
     </script>
-</head>
+  </head>
 
-<body onload="startTime()" class="bg-cover bg-center h-screen" style="background-image: url('https://cutewallpaper.org/23/ho-chi-minh-city-wallpaper/2266723169.jpg');">
-
-    <!-- Header -->
+  <body
+    onload="startTime()"
+    class="bg-cover bg-center h-screen">
     <nav class="flex justify-end gap-4 p-4 bg-gray-900 bg-opacity-75 text-white">
-        <a href="/" class="hover:text-gray-300">Trang Chủ</a>
-        <a href="/listUsers" class="hover:text-gray-300">Danh Sách</a>
+      <a
+        href="/"
+        class="text-gray-400"
+        >Trang chủ</a
+      >
+      <a
+        href="/listUsers"
+        class="hover:text-gray-400"
+        >Danh sách</a
+      >
     </nav>
 
-    <!-- Title -->
     <div class="text-center mt-4">
-        <h1 class="text-black text-4xl font-bold">Hệ Thống Chấm Công Bằng Khuôn Mặt</h1>
-        {% if mess %}
-        <p class="text-red-500 text-xl mt-2">{{ mess }}</p>
-        {% endif %}
-        <p id="clock" class="text-black text-2xl mt-2"></p>
+      <h1 class="text-black text-4xl font-bold">Hệ Thống Chấm Công Bằng Khuôn Mặt</h1>
+      {% if mess %}
+      <p class="text-red-500 text-xl mt-2">{{ mess }}</p>
+      {% endif %}
+      <p
+        id="clock"
+        class="text-black text-2xl mt-2"></p>
     </div>
 
-    <!-- Content -->
     <div class="container mx-auto mt-8 gap-6 px-4">
-        <!-- Chấm Công -->
-        <div class="bg-white c bg-opacity-80 shadow-lg rounded-lg p-6">
-            <h2 class="bg-blue-600 text-white text-xl font-bold p-4 rounded-t-lg flex items-center">
-                Chấm Công
-            </h2>
-            <div class="text-center mt-6">
-                <a href="/start">
-                    <button class="bg-blue-500 text-white text-lg font-bold py-3 px-6 rounded-lg hover:bg-blue-600">
-                        Chấm công vào/ra 
-                    </button>
-                </a>
-            </div>
-            <table class="table-auto w-full mt-6 text-sm border-collapse border border-gray-300">
-                <thead>
-                    <tr class="bg-gray-200">
-                        <th class="border border-gray-300 px-4 py-2">STT</th>
-                        <th class="border border-gray-300 px-4 py-2">ID</th>
-                        <th class="border border-gray-300 px-4 py-2">Tên</th>
-                        <th class="border border-gray-300 px-4 py-2">Thời gian vào</th>
-                        <th class="border border-gray-300 px-4 py-2">Thời gian ra</th>
-                        <th class="border border-gray-300 px-4 py-2">Tổng thời gian làm việc</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    {% if l %}
-                    {% for i in range(l) %}
-                    <tr class="hover:bg-gray-100">
-                        <td class="border border-gray-300 px-4 py-2">{{ i+1 }}</td>
-                        <td class="border border-gray-300 px-4 py-2">{{ rolls[i] }}</td>
-                        <td class="border border-gray-300 px-4 py-2">{{ names[i] }}</td>
-                        <td class="border border-gray-300 px-4 py-2">{{ inTimes[i] }}</td>
-                        <td class="border border-gray-300 px-4 py-2">{{ outTimes[i] }}</td>
-                        <td class="border border-gray-300 px-4 py-2">{{ totalTimes[i] }}</td>
-                    </tr>
-                    {% endfor %}
-                    {% endif %}
-                </tbody>
-            </table>
+      <div class="bg-white c bg-opacity-80 shadow-lg rounded-lg p-6">
+        <h2 class="bg-blue-600 text-white text-xl font-bold p-4 rounded-t-lg flex items-center">Chấm Công</h2>
+        <div class="text-center mt-6">
+          <a href="/start">
+            <button class="bg-blue-500 text-white text-lg font-bold py-3 px-6 rounded-lg hover:bg-blue-600">
+              Chấm công vào/ra
+            </button>
+          </a>
         </div>
-
+        <table class="table-auto w-full mt-6 text-sm border-collapse border border-gray-300">
+          <thead>
+            <tr class="bg-gray-200">
+              <th class="border border-gray-300 px-4 py-2">STT</th>
+              <th class="border border-gray-300 px-4 py-2">ID</th>
+              <th class="border border-gray-300 px-4 py-2">Tên</th>
+              <th class="border border-gray-300 px-4 py-2">Thời gian vào</th>
+              <th class="border border-gray-300 px-4 py-2">Thời gian ra</th>
+              <th class="border border-gray-300 px-4 py-2">Tổng thời gian làm việc</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% if l %} {% for i in range(l) %}
+            <tr class="hover:bg-gray-100">
+              <td class="border border-gray-300 px-4 py-2">{{ i+1 }}</td>
+              <td class="border border-gray-300 px-4 py-2">{{ rolls[i] }}</td>
+              <td class="border border-gray-300 px-4 py-2">{{ names[i] }}</td>
+              <td class="border border-gray-300 px-4 py-2">{{ inTimes[i] }}</td>
+              <td class="border border-gray-300 px-4 py-2">{{ outTimes[i] }}</td>
+              <td class="border border-gray-300 px-4 py-2">{{ totalTimes[i] }}</td>
+            </tr>
+            {% endfor %} {% endif %}
+          </tbody>
+        </table>
+      </div>
     </div>
-
-</body>
-
+  </body>
 </html>

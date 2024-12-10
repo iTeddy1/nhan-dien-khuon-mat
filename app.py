@@ -8,7 +8,6 @@ from ultils import handle_checkin_checkout, totalreg, getusers, delUser, extract
 #### Defining Flask App
 app = Flask(__name__)
 
-
 #### Saving Date today in 2 different formats
 datetoday = date.today().strftime("%m_%d_%y")
 datetoday2 = date.today().strftime("%d-%B-%Y")
@@ -56,6 +55,15 @@ def start():
         return render_template('home.html',totalreg=totalreg(),datetoday2=datetoday2,mess='There is no trained model in the static folder. Please add a new face to continue.') 
 
     cap = cv2.VideoCapture(0)
+
+    if not cap.isOpened():
+        return render_template(
+            'home.html',
+            totalreg=totalreg(),
+            datetoday2=datetoday2,
+            mess='Unable to access the camera.'
+        )
+    
     ret = True
     identified_person = None    
     escKey = cv2.waitKey
@@ -113,27 +121,30 @@ def start():
 #### This function will run when we add a new user
 @app.route('/add', methods=['GET', 'POST'])
 def add():
-    newusername = request.form['newusername']
-    newuseremail = request.form['newuseremail']
+    newusername = request.form.get('newusername', '').strip()
+    newuseremail = request.form.get('newuseremail', '').strip()
     newuserid = str(uuid.uuid4())[:8]  # Lấy 8 ký tự đầu tiên của UUID
 
     # Kiểm tra nếu User ID đã tồn tại
     if checkUserID(newuserid) == False:
-        userimagefolder = f'static/faces/{newusername}_{newuserid}_{newuseremail}'
-        if not os.path.isdir(userimagefolder):
-            os.makedirs(userimagefolder)
+        user_image_folder = f'static/faces/{newusername}_{newuserid}_{newuseremail}'
+        os.makedirs(user_image_folder, exist_ok=True)
+
         cap = cv2.VideoCapture(0)
         i, j = 0, 0
         while 1:
-            _, frame = cap.read()
+            ret, frame = cap.read()
+            if not ret or frame is None:
+                break
+
             faces = extract_faces(frame)
             if faces is not None:
                 for (x, y, w, h) in faces:
                     cv2.rectangle(frame, (x, y), (x + w, y + h), (255, 0, 20), 2)
                     cv2.putText(frame, f'Images Captured: {i}/100', (30, 30), cv2.FONT_HERSHEY_SIMPLEX, 1, (255, 0, 20), 2, cv2.LINE_AA)
                     if j % 10 == 0:
-                        name = newusername + '_' + str(i) + '.jpg'
-                        cv2.imwrite(userimagefolder + '/' + name, frame[y:y + h, x:x + w])
+                        name = f'{newusername}_{i}.jpg'
+                        cv2.imwrite(f'{user_image_folder}/{name}', frame[y:y + h, x:x + w])
                         i += 1
                     j += 1
                 if j == 1000:
@@ -141,6 +152,7 @@ def add():
                 cv2.imshow('Adding new User', frame)
                 if cv2.waitKey(1) == 27:
                     break
+
         cap.release()
         cv2.destroyAllWindows()
         print('Training Model')
@@ -148,13 +160,12 @@ def add():
 
         # Gửi email thông báo thành công
         send_email(newuseremail, newusername)
-
         # Thêm người dùng vào bảng Attendance
         add_attendance(f"{newusername}_{newuserid}_{newuseremail}") # username_id_email
-
         # Trả về giao diện
         names, rolls, inTimes, outTimes, totalTimes, l = extract_attendance()
-        return render_template('home.html', names=names, rolls=rolls, inTimes=inTimes, outTimes=outTimes, totalTimes=totalTimes, l=l, totalreg=totalreg(), datetoday2=datetoday2)
+
+        return render_template('home.html', names=names, rolls=rolls, inTimes=inTimes, outTimes=outTimes, totalTimes=totalTimes, l=l, totalreg=totalreg(), datetoday2=datetoday2, mess=f'User {newusername} added successfully.')
     else:
         names, rolls, inTimes, outTimes, totalTimes, l = extract_attendance()
         return render_template('home.html', names=names, rolls=rolls, inTimes=inTimes, outTimes=outTimes, totalTimes=totalTimes, l=l, totalreg=totalreg(), datetoday2=datetoday2, mess='User ID has existed. Please type other ID.')
