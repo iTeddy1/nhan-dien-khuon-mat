@@ -194,22 +194,28 @@ def handle_checkin_checkout(identified_person):
     # Đọc dữ liệu từ file CSV
     df = pd.read_csv(file_path)
 
-    if userid not in df['ID'].values:
-        # Người dùng chưa check-in
-        with open(file_path, 'a', newline='') as f:
-            new_row = {'ID': userid, 'Name': username, 'Check_in_time': current_time, 
-                       'Check_out_time': '', 'Total_time': ''}
-            df = pd.concat([df, pd.DataFrame([new_row])], ignore_index=True)
-    else:
-        # Người dùng đã check-in, cập nhật check-out
+    if userid in df['ID'].values:
         idx = df[df['ID'] == userid].index[0]
-        if pd.isna(df.at[idx, 'Check_out_time']) or df.at[idx, 'Check_out_time'] == '':
+        if pd.isna(df.at[idx, 'Check_in_time']) or df.at[idx, 'Check_in_time'] == '':
+            # Người dùng chưa Check-in, tiến hành Check-in
+            df.at[idx, 'Check_in_time'] = current_time
+        elif pd.isna(df.at[idx, 'Check_out_time']) or df.at[idx, 'Check_out_time'] == '':
+            # Người dùng đã Check-in, tiến hành Check-out
             df.at[idx, 'Check_out_time'] = current_time
             check_in_time = datetime.strptime(df.at[idx, 'Check_in_time'], '%H:%M:%S')
-            total_time = datetime.strptime(current_time, '%H:%M:%S') - check_in_time
-            df.at[idx, 'Total_time'] = f'{total_time}'            
+            total_time = (datetime.strptime(current_time, '%H:%M:%S') - check_in_time).seconds // 60
+            df.at[idx, 'Total_time'] = f'{total_time} minutes'
+        else:
+            # Người dùng đã Check-in và Check-out
+            return "Bạn đã chấm công cho ngày hôm nay"
+    else:
+        # Thêm người mới vào danh sách Check-in
+        new_row = {'ID': userid, 'Name': username, 'Check_in_time': current_time, 
+                   'Check_out_time': '', 'Total_time': ''}
+        df = pd.concat([df, pd.DataFrame([new_row])], ignore_index=True)
 
     df.to_csv(file_path, index=False)
+    return "Check-in/Check-out thành công!"
 
 
 def save_attendance_image(user_name: str, user_id: str, frame, x, y, w, h, action: str):

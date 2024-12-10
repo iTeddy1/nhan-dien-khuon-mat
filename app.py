@@ -92,13 +92,15 @@ def start():
     cv2.destroyAllWindows()
 
     # identified_person: chuỗi có dạng name_id_email
-    if identified_person:
-        handle_checkin_checkout(identified_person)
-    else:
-        return render_template('home.html', totalreg=totalreg(), datetoday2=datetoday2, mess='No face detected or person not recognized.')
+    result_message = handle_checkin_checkout(identified_person)
+
 
     names,rolls,inTimes,outTimes,totalTimes,l = extract_attendance()    
-    print(identified_person)
+    if result_message == "Bạn đã chấm công cho ngày hôm nay.":
+        return render_template('home.html', 
+                               names=names,rolls=rolls,inTimes=inTimes,outTimes=outTimes,totalTimes=totalTimes,l=l,totalreg=totalreg(),datetoday2=datetoday2,
+                               mess=result_message)
+
     #Save attendance image
     username = identified_person.split('_')[0]
     userid = identified_person.split('_')[1]
@@ -113,8 +115,7 @@ def start():
     if outTime != 'nan':
         save_attendance_image(username, userid, frame, x, y, w, h, 'checkout')
 
-
-    return render_template('home.html',names=names,rolls=rolls,inTimes=inTimes,outTimes=outTimes,totalTimes=totalTimes,l=l,totalreg=totalreg(),datetoday2=datetoday2) 
+    return render_template('home.html',names=names,rolls=rolls,inTimes=inTimes,outTimes=outTimes,totalTimes=totalTimes,l=l,totalreg=totalreg(),datetoday2=datetoday2, mess=result_message) 
 
 
 #### This function will run when we add a new user
