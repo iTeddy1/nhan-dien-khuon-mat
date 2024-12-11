@@ -1,3 +1,4 @@
 Attendance
 /static/faces/*
 .venv
+__pycache__

@@ -2,11 +2,23 @@ import uuid
 import cv2
 import os
 from flask import Flask,request,render_template
+from flask_mail import Mail, Message
 from datetime import date
-from ultils import handle_checkin_checkout, save_attendance_image, totalreg, getusers, delUser, extract_faces, identify_face, train_model, add_attendance, extract_attendance, getUserTime, checkUserID, send_email
+from ultils import handle_checkin_checkout, save_attendance_image, totalreg, getusers, delUser, extract_faces, identify_face, train_model, add_attendance, extract_attendance, getUserTime, checkUserID
 
 #### Defining Flask App
 app = Flask(__name__)
+
+# Cấu hình mail server
+app.config['MAIL_SERVER'] = 'smtp.gmail.com'
+app.config['MAIL_PORT'] = 587
+app.config['MAIL_USE_TLS'] = True
+app.config['MAIL_USE_SSL'] = False
+app.config['MAIL_USERNAME'] = 'duytrung.ng1@gmail.com'  
+app.config['MAIL_PASSWORD'] = 'qmwv uicf tpcu edmu'  
+app.config['MAIL_DEFAULT_SENDER'] = 'duytrung.ng1@gmail.com'
+
+mail = Mail(app)
 
 #### Saving Date today in 2 different formats
 datetoday = date.today().strftime("%m_%d_%y")
@@ -46,7 +58,7 @@ def deleteUser():
     delUser(userid, username, useremail)
     train_model()
     names, rolls, l, emails = getusers()
-    return render_template('ListUser.html', names= names, rolls=rolls, l=l, emails=emails)
+    return render_template('ListUser.html', names= names, rolls=rolls, l=l, emails=emails, mess=f'User {username} deleted successfully.')
 
 #### This function will run when we click on Check in / Check out Button
 @app.route('/start',methods=['GET'])
@@ -94,7 +106,6 @@ def start():
     # identified_person: chuỗi có dạng name_id_email
     result_message = handle_checkin_checkout(identified_person)
 
-
     names,rolls,inTimes,outTimes,totalTimes,l = extract_attendance()    
     if result_message == "Bạn đã chấm công cho ngày hôm nay.":
         return render_template('home.html', 
@@ -116,7 +127,6 @@ def start():
         save_attendance_image(username, userid, frame, x, y, w, h, 'checkout')
 
     return render_template('home.html',names=names,rolls=rolls,inTimes=inTimes,outTimes=outTimes,totalTimes=totalTimes,l=l,totalreg=totalreg(),datetoday2=datetoday2, mess=result_message) 
-
 
 #### This function will run when we add a new user
 @app.route('/add', methods=['GET', 'POST'])
@@ -163,17 +173,38 @@ def add():
         # Thêm người dùng vào bảng Attendance
         add_attendance(f"{newusername}_{newuserid}_{newuseremail}") # username_id_email
         # Trả về giao diện
-        names, rolls, inTimes, outTimes, totalTimes, l = extract_attendance()
-
-        return render_template('home.html', names=names, rolls=rolls, inTimes=inTimes, outTimes=outTimes, totalTimes=totalTimes, l=l, totalreg=totalreg(), datetoday2=datetoday2, mess=f'User {newusername} added successfully.')
+        names, rolls, l, emails = getusers()
+        return render_template('ListUser.html', names= names, rolls=rolls, l=l, emails=emails, mess=f'User {newusername} added successfully.')
     else:
-        names, rolls, inTimes, outTimes, totalTimes, l = extract_attendance()
-        return render_template('home.html', names=names, rolls=rolls, inTimes=inTimes, outTimes=outTimes, totalTimes=totalTimes, l=l, totalreg=totalreg(), datetoday2=datetoday2, mess='User ID has existed. Please type other ID.')
+        names, rolls, l, emails = getusers()
+        return render_template('ListUser.html', names= names, rolls=rolls, l=l, emails=emails, mess=f'User {newusername} added failed.')
+
+def send_email(to_email, username):
+    """
+    Gửi email thông báo cho nhân viên sau khi thêm user thành công.
+    """
+    subject = "Thông Báo: Đăng Ký Thành Công"
+    body = f""" <html> 
+        <body> 
+            <div style="font-family: Arial, sans-serif; line-height: 1.6;"> 
+                <h2 style="color: #4CAF50;">Xin chào {username},</h2> 
+                <p>Bạn đã được thêm thành công vào hệ thống chấm công.</p> 
+                <p>Chào mừng bạn đến với đội ngũ của chúng tôi!</p> <p>Trân trọng,</p> 
+                <p><strong>Đội ngũ quản lý</strong></p> 
+                <hr style="border: 0; border-top: 1px solid #eee;"> 
+                <p style="font-size: 0.9em; color: #555;">Nếu bạn có bất kỳ câu hỏi nào, vui lòng liên hệ với chúng tôi qua email này.</p> 
+            </div> 
+        </body> 
+    </html> """
+
+    try:
+        msg = Message(subject, recipients=[to_email], html=body)
+        mail.send(msg)
+        print(f"Email sent to {to_email}")
+    except Exception as e:
+        print(f"Failed to send email: {e}")
 
 #### Our main function which runs the Flask App
 if __name__ == '__main__':
     app.run(debug=True)
     app.run(host='0.0.0.0', port='6969')
-
-
-

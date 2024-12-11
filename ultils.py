@@ -1,8 +1,6 @@
 import csv
 import cv2
 import os
-from flask import Flask
-from flask_mail import Mail, Message
 from datetime import date
 from datetime import datetime
 import numpy as np
@@ -11,23 +9,9 @@ import pandas as pd
 import joblib
 import shutil
 
-#### Defining Flask App
-app = Flask(__name__)
-
-# Cấu hình mail server
-app.config['MAIL_SERVER'] = 'smtp.gmail.com'
-app.config['MAIL_PORT'] = 587
-app.config['MAIL_USE_TLS'] = True
-app.config['MAIL_USE_SSL'] = False
-app.config['MAIL_USERNAME'] = 'duytrung.ng1@gmail.com'  
-app.config['MAIL_PASSWORD'] = 'qmwv uicf tpcu edmu'  
-app.config['MAIL_DEFAULT_SENDER'] = 'duytrung.ng1@gmail.com'
-
 #### Saving Date today in 2 different formats
 datetoday = date.today().strftime("%m_%d_%y")
 datetoday2 = date.today().strftime("%d-%B-%Y")
-
-mail = Mail(app)
 
 #### Initializing VideoCapture object to access WebCam
 face_detector = cv2.CascadeClassifier('haarcascade_frontalface_default.xml')
@@ -40,7 +24,7 @@ except:
 def totalreg():
     return len(os.listdir('static/faces'))
 
-#### get name and id of all users
+#### Lấy thông tin người dùng
 def getusers():
     nameUsers = []
     idUsers = []
@@ -56,7 +40,7 @@ def getusers():
         emailUsers.append(user.split('_')[2])
     return nameUsers, idUsers, l, emailUsers
 
-#### delete user
+#### Xóa người dùng
 def delUser(userid, username, email):
     # Xóa thư mục khuôn mặt của nhân viên
     face_dir = f'static/faces/{username}_{userid}_{email}'
@@ -217,7 +201,6 @@ def handle_checkin_checkout(identified_person):
     df.to_csv(file_path, index=False)
     return "Check-in/Check-out thành công!"
 
-
 def save_attendance_image(user_name: str, user_id: str, frame, x, y, w, h, action: str):
     folder_path = f'Attendance/Attendance_faces-{datetoday}/{user_name}_{user_id}_{datetoday2}'
     if not os.path.isdir(folder_path):
@@ -226,32 +209,6 @@ def save_attendance_image(user_name: str, user_id: str, frame, x, y, w, h, actio
     image_name = f'{user_name}_{user_id}_{action}.jpg'
     if image_name not in os.listdir(folder_path):
         cv2.imwrite(f'{folder_path}/{image_name}', frame[y:y+h, x:x+w])
-
-
-def send_email(to_email, username):
-    """
-    Gửi email thông báo cho nhân viên sau khi thêm user thành công.
-    """
-    subject = "Thông Báo: Đăng Ký Thành Công"
-    body = f""" <html> 
-        <body> 
-            <div style="font-family: Arial, sans-serif; line-height: 1.6;"> 
-                <h2 style="color: #4CAF50;">Xin chào {username},</h2> 
-                <p>Bạn đã được thêm thành công vào hệ thống chấm công.</p> 
-                <p>Chào mừng bạn đến với đội ngũ của chúng tôi!</p> <p>Trân trọng,</p> 
-                <p><strong>Đội ngũ quản lý</strong></p> 
-                <hr style="border: 0; border-top: 1px solid #eee;"> 
-                <p style="font-size: 0.9em; color: #555;">Nếu bạn có bất kỳ câu hỏi nào, vui lòng liên hệ với chúng tôi qua email này.</p> 
-            </div> 
-        </body> 
-    </html> """
-
-    try:
-        msg = Message(subject, recipients=[to_email], html=body)
-        mail.send(msg)
-        print(f"Email sent to {to_email}")
-    except Exception as e:
-        print(f"Failed to send email: {e},to {to_email}, {username}")
 
 #Get check in and out time of user
 def getUserTime(userid):

@@ -8,7 +8,11 @@
     <meta
       name="viewport"
       content="width=device-width, initial-scale=1.0" />
-    <title>Face Recognition Attendance</title>
+    <link
+      rel="icon"
+      type="image/svg+xml"
+      href="../asset/human-head-with-a-question-mark-inside-svgrepo-com.svg" />
+    <title>Hệ Thống Chấm Công Bằng Khuôn Mặt</title>
     <script src="https://cdn.tailwindcss.com"></script>
   </head>
 
@@ -26,10 +30,14 @@
       >
     </nav>
 
-    <div class="text-center my -6">
-      <h1 class="text-4xl font-bold text-white bg-gray-800 bg-opacity-50 py-4 px-8 inline-block rounded-lg">
-        Hệ Thống Chấm Công Bằng Khuôn Mặt
-      </h1>
+    <div class="text-center mt-4">
+      <h1 class="text-black text-4xl font-bold">Hệ Thống Chấm Công Bằng Khuôn Mặt</h1>
+      {% if mess %}
+      <p class="text-red-500 text-xl mt-2">{{ mess }}</p>
+      {% endif %}
+      <p
+        id="clock"
+        class="text-black text-2xl mt-2"></p>
     </div>
 
     <div class="grid grid-cols-2">
