@@ -191,7 +191,7 @@ def handle_checkin_checkout(identified_person):
             df.at[idx, 'Check_out_time'] = current_time
             check_in_time = datetime.strptime(df.at[idx, 'Check_in_time'], '%H:%M:%S')
             total_time = (datetime.strptime(current_time, '%H:%M:%S') - check_in_time).seconds // 60
-            df.at[idx, 'Total_time'] = f'{total_time} minutes'
+            df.at[idx, 'Total_time'] = f'{total_time} phút'
         else:
             # Người dùng đã Check-in và Check-out
             return "Bạn đã chấm công cho ngày hôm nay"
