@@ -5,6 +5,7 @@ from datetime import date
 from datetime import datetime
 import numpy as np
 from sklearn.neighbors import KNeighborsClassifier
+from sklearn.metrics import classification_report, accuracy_score
 import pandas as pd
 import joblib
 import shutil
@@ -72,7 +73,8 @@ def extract_faces(img):
         gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
         face_points = face_detector.detectMultiScale(gray, 1.3, 5)
         if len(face_points):  # Check if face_points is not empty
-            return face_points
+            if(is_live_face(img)):
+                return face_points
     return None
 
 #### Identify face using ML model
@@ -80,13 +82,12 @@ def identify_face(facearray):
     model = joblib.load('static/face_recognition_model.pkl')
     return model.predict(facearray)
 
-
 #### A function which trains the model on all the faces available in faces folder
 def train_model():
     faces = []
     labels = []
     userlist = os.listdir('static/faces')
-    # print(userlist)
+    print(userlist)
     for user in userlist:
         for imgname in os.listdir(f'static/faces/{user}'):
             img = cv2.imread(f'static/faces/{user}/{imgname}')
@@ -97,9 +98,11 @@ def train_model():
     if len(faces) == 0:
         return
     faces = np.array(faces)
+    labels = np.array(labels)
     knn = KNeighborsClassifier(n_neighbors=5)
     knn.fit(faces,labels)
-    joblib.dump(knn,'static/face_recognition_model.pkl')
+    evaluate_model(faces, labels)
+    joblib.dump(knn,'static/face_recognition_model.pkl') # Lưu mô hình đã huấn luyện
 
 #### Extract info from today's attendance file in attendance folder
 def extract_attendance():
@@ -221,3 +224,42 @@ def getUserTime(userid):
             break
             
     return str(df['Check_in_time'][row_index]), str(df['Check_out_time'][row_index])
+
+def evaluate_model(faces, labels):
+    # Load the model
+    model = joblib.load('static/face_recognition_model.pkl')
+    
+    # Perform predictions
+    predictions = model.predict(faces)
+    
+    # Print evaluation metrics
+    print("Accuracy:", accuracy_score(labels, predictions))
+    print("Classification Report:\n", classification_report(labels, predictions))
+
+def is_live_face(img):
+    if img is None or img.size == 0:
+        return False
+
+    # Chuyển đổi sang ảnh xám
+    gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
+
+    # Phát hiện khuôn mặt
+    faces = face_detector.detectMultiScale(gray, scaleFactor=1.1, minNeighbors=5, minSize=(30, 30))
+
+    if len(faces) == 0:
+        return False  # Không có khuôn mặt nào được phát hiện
+
+    # Khởi tạo Haar Cascade cho mắt
+    eye_cascade = cv2.CascadeClassifier(cv2.data.haarcascades + 'haarcascade_eye.xml')
+
+    for (x, y, w, h) in faces:
+        face_region = img[y:y+h, x:x+w]
+        face_gray = gray[y:y+h, x:x+w]
+
+        # Phát hiện mắt
+        eyes = eye_cascade.detectMultiScale(face_gray, scaleFactor=1.1, minNeighbors=5, minSize=(20, 20))
+
+        if len(eyes) >= 2:
+            return True  # Có ít nhất 2 mắt được phát hiện => Mặt sống
+
+    return False  # Không phát hiện được mắt hoặc không đủ bằng chứng về sống động

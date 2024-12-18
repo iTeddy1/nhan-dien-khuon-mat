@@ -4,7 +4,7 @@ import os
 from flask import Flask,request,render_template
 from flask_mail import Mail, Message
 from datetime import date
-from ultils import handle_checkin_checkout, save_attendance_image, totalreg, getusers, delUser, extract_faces, identify_face, train_model, add_attendance, extract_attendance, getUserTime, checkUserID
+from ultils import evaluate_model, handle_checkin_checkout, save_attendance_image, totalreg, getusers, delUser, extract_faces, identify_face, train_model, add_attendance, extract_attendance, getUserTime, checkUserID
 
 #### Defining Flask App
 app = Flask(__name__)
@@ -48,9 +48,9 @@ def home():
 @app.route('/listUsers')
 def users():
     names, rolls, l, emails = getusers()
-    return render_template('ListUser.html', names= names, rolls=rolls, l=l, emails=emails)
+    return render_template('ListUser.html', names= names, rolls=rolls, l=l, emails=emails, totalreg=totalreg())
 
-@app.route('/deletetUser', methods=['POST'])
+@app.route('/deleteUser', methods=['POST'])
 def deleteUser():
     userid = request.form['userid']
     username = request.form['username']
@@ -64,7 +64,7 @@ def deleteUser():
 @app.route('/start',methods=['GET'])
 def start():
     if 'face_recognition_model.pkl' not in os.listdir('static'):
-        return render_template('home.html',totalreg=totalreg(),datetoday2=datetoday2,mess='There is no trained model in the static folder. Please add a new face to continue.') 
+        return render_template('home.html',totalreg=totalreg(),datetoday2=datetoday2,mess='There is no trained model in the static folder.')
 
     cap = cv2.VideoCapture(0)
 
@@ -102,11 +102,12 @@ def start():
 
     cap.release()
     cv2.destroyAllWindows()
-
+ 
     # identified_person: chuỗi có dạng name_id_email
     result_message = handle_checkin_checkout(identified_person)
 
     names,rolls,inTimes,outTimes,totalTimes,l = extract_attendance()    
+
     if result_message == "Bạn đã chấm công cho ngày hôm nay.":
         return render_template('home.html', 
                                names=names,rolls=rolls,inTimes=inTimes,outTimes=outTimes,totalTimes=totalTimes,l=l,totalreg=totalreg(),datetoday2=datetoday2,
@@ -115,12 +116,12 @@ def start():
     #Save attendance image
     username = identified_person.split('_')[0]
     userid = identified_person.split('_')[1]
-    userimagefolder = f'Attendance/Attendance_faces-{datetoday}/'+username+'_'+str(userid)+'_'+datetoday2
-    if not os.path.isdir(userimagefolder):
-        os.makedirs(userimagefolder)
+    # userimagefolder = f'Attendance/Attendance_faces-{datetoday}/'+username+'_'+str(userid)+'_'+datetoday2
+    # if not os.path.isdir(userimagefolder):
+    #     os.makedirs(userimagefolder)
     inTime, outTime = getUserTime(userid)
 
-    print(inTime, outTime)
+    # print(inTime, outTime)
     if inTime != 'nan':
         save_attendance_image(username, userid, frame, x, y, w, h, 'checkin')
     if outTime != 'nan':
